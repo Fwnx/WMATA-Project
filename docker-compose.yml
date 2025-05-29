@@ -1,0 +1,39 @@
+version: '3.8'
+
+services:
+  dev-php:
+    build:
+      context: .
+      dockerfile: ./docker/development/dev-php/Dockerfile
+    volumes:
+      - "./backend:/var/www"
+  
+  symfony:
+    build:
+      context: .
+      dockerfile: ./docker/development/dev-php/Dockerfile
+    volumes:
+      - "./backend:/var/www"
+    ports:
+      - "8000:8000"
+    command: symfony server:start --allow-all-ip
+
+  dev-vue3:
+    image: node:23-alpine
+    volumes:
+      - "./frontend:/var/www"
+    working_dir: "/var/www"
+
+  vue3:
+    image: node:23-alpine
+    volumes:
+      - "./frontend:/var/www"
+    working_dir: "/var/www"
+    ports:
+      - "3000:3000"
+      - "24678:24678" # Vite HMR port
+    environment:
+      - VITE_HMR_HOST=localhost
+      - VITE_HMR_PORT=24678
+      - CHOKIDAR_USEPOLLING=true
+    command: npm run dev
