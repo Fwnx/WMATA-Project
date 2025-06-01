@@ -1,30 +1,31 @@
 <template>
   <div class="train-arrival">
-    <div class="station-select">
-      <label for="station">Select a Station:</label>
-      <select 
-        id="station" 
-        v-model="selectedStation"
-        @change="fetchPredictions"
-      >
-        <option value="">Choose a station...</option>
-        <option 
-          v-for="station in stations" 
-          :key="station.Code" 
-          :value="station.Code"
+    <div class="station-dropdown-container">
+      <label class="station-dropdown-label" for="station">Select a Station:</label>
+      <div class="station-dropdown" :class="{ 'loading': loading, 'error': error }">
+        <select 
+          id="station" 
+          v-model="selectedStation"
+          @change="fetchPredictions"
         >
-          {{ station.Name }}
-        </option>
-      </select>
+          <option value="">Choose a station...</option>
+          <option 
+            v-for="station in stations" 
+            :key="station.Code" 
+            :value="station.Code"
+          >
+            {{ station.Name }}
+          </option>
+        </select>
+        <div v-if="error" class="error-message">
+          {{ error }}
+        </div>
+      </div>
     </div>
 
     <div v-if="loading" class="loading">
       <div class="loading-spinner"></div>
       Loading...
-    </div>
-
-    <div v-else-if="error" class="error">
-      {{ error }}
     </div>
 
     <div v-else-if="predictions.length" class="predictions">
