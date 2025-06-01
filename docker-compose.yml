@@ -7,6 +7,12 @@ services:
       dockerfile: ./docker/development/dev-php/Dockerfile
     volumes:
       - "./backend:/var/www"
+    depends_on:
+      - redis
+    environment:
+      - APP_ENV=dev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
   
   symfony:
     build:
@@ -17,6 +23,12 @@ services:
     ports:
       - "8000:8000"
     command: symfony server:start --allow-all-ip
+    depends_on:
+      - redis
+    environment:
+      - APP_ENV=dev
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
 
   dev-vue3:
     image: node:23-alpine
@@ -37,3 +49,14 @@ services:
       - VITE_HMR_PORT=24678
       - CHOKIDAR_USEPOLLING=true
     command: npm run dev
+
+  redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis-data:/data
+    command: redis-server --appendonly yes
+
+volumes:
+  redis-data:
