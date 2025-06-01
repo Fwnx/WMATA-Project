@@ -1,0 +1,10 @@
+framework:
+    rate_limiter:
+        wmata_limiter:
+            policy: 'sliding_window'
+            limit: 10
+            interval: '1 second'
+        wmata_daily:
+            policy: 'fixed_window'
+            limit: 50000
+            interval: '1 day' 
