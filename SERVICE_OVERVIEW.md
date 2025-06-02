@@ -1,8 +1,10 @@
 # Service Overview
 
-This document outlines the planned architecture and implementation details for the WMATA Train Tracking Application.
+This document outlines the architecture and implementation details for the WMATA Train Tracking Application.
 
 ## System Architecture
+
+The application follows a standard three-tier architecture with caching:
 ```
 ┌─────────────┐     ┌──────────────┐     ┌───────────────┐
 │  Vue.js UI  │────▶│ Symfony API  │────▶│  WMATA API    │
@@ -13,239 +15,210 @@ This document outlines the planned architecture and implementation details for t
                    └──────────────┘
 ```
 
-## Frontend Component Structure
+## Frontend Design
 
-### 1. Core Components
-- **TrainArrival**: Container component orchestrating the train arrival view
-  - Manages station selection state
-  - Handles prediction data fetching
-  - Coordinates child components
+The frontend is built with Vue.js and follows a component-based architecture that emphasizes reusability and clear data flow.
 
-- **StationSelect**: Station selection dropdown
-  - Fetches and displays station list
-  - Handles station selection
-  - Manages loading and error states
-  - Emits selection changes
+### Key Components
 
-- **PredictionGrid**: Displays train predictions
-  - Renders prediction data in grid format
-  - Handles different train lines
-  - Shows arrival times and destinations
+1. **Train Arrival View**
+   - Main container component
+   - Manages the overall user experience
+   - Coordinates data flow between child components
+   - Handles error states and loading indicators
 
-- **LoadingSpinner**: Reusable loading indicator
-  - Configurable text display
-  - Animated spinner
-  - Used across components
+2. **Station Selection**
+   - Allows users to choose from available stations
+   - Provides clear feedback during loading
+   - Shows errors if station data can't be loaded
+   - Updates parent components when selection changes
 
-### 2. Component Data Flow
+3. **Prediction Display**
+   - Shows upcoming train arrivals in a grid format
+   - Color-coded by train line for easy reading
+   - Displays arrival times and destinations
+   - Handles empty states appropriately
+
+4. **Loading Indicator**
+   - Consistent loading experience across the app
+   - Provides visual feedback during data fetches
+   - Can be configured with or without text
+
+### Data Flow Pattern
+
+The application uses a top-down data flow pattern:
 ```
-TrainArrival (Container)
-├─▶ StationSelect
-│   └─▶ Emits station changes
-├─▶ LoadingSpinner
-│   └─▶ Shows during data fetch
-└─▶ PredictionGrid
-    └─▶ Displays prediction results
-```
-
-## Core Services
-
-### 1. WMATA Integration Service
-- Primary interface for WMATA API communication
-- Data Types:
-  ```typescript
-  interface TrainPrediction {
-    LocationCode: string      // Station code
-    Destination: string      // Terminal station
-    Line: string            // RD, BL, YL, etc.
-    Min: string            // Arrival time in minutes
-    Car: string           // Number of cars
-  }
-
-  interface Station {
-    Code: string         // Station code
-    Name: string        // Full station name
-    Lines: string[]    // Array of lines serving station
-  }
-  ```
-
-### 2. Cache Service
-- Caching Layer:
-  - Station Info: 24-hour TTL
-  - Predictions: 30-second TTL
-- Cache Keys:
-  ```
-  station:{stationCode}:info
-  station:{stationCode}:predictions
-  ```
-
-### 3. Rate Limiter Service
-- Rate Limits:
-  - Per Second: 10 requests
-  - Per Day: 50,000 requests
-- Implementation:
-  - Uses Redis sliding window
-  - Key Format: `ratelimit:wmata:{window}:{identifier}`
-
-## Data Flow
-
-### 1. Train Prediction Flow
-```
-Client Request
-→ Check Redis Cache
-→ If cached: Return cached data
-→ If not cached:
-  → Check rate limit
-  → Call WMATA API
-  → Cache response
-  → Return to client
+Train Arrival View (Parent)
+├─▶ Station Selection
+│   └─▶ Updates parent when station changes
+├─▶ Loading Indicator
+│   └─▶ Shows during any data fetch
+└─▶ Prediction Display
+    └─▶ Shows train arrival data
 ```
 
-### 2. Station Information Flow
-```
-Client Request
-→ Check Redis Cache
-→ If cached: Return cached data
-→ If not cached:
-  → Check rate limit
-  → Call WMATA API
-  → Cache response (24h)
-  → Return to client
+## Backend Services
+
+### WMATA Integration
+
+The backend provides a reliable interface to the WMATA API with:
+- Consistent data formatting
+- Error handling
+- Rate limit management
+- Response caching
+
+Key data structures:
+```typescript
+// Train prediction information
+interface TrainPrediction {
+  LocationCode: string      // Station code
+  Destination: string      // Terminal station
+  Line: string            // RD, BL, YL, etc.
+  Min: string            // Arrival time in minutes
+  Car: string           // Number of cars
+}
+
+// Station information
+interface Station {
+  Code: string         // Station code
+  Name: string        // Full station name
+  Lines: string[]    // Array of lines serving station
+}
 ```
 
-## API Design
+### Caching Strategy
 
-### Endpoints
+The application uses Redis for caching with different TTLs based on data type:
+- Station Information: 24-hour cache (rarely changes)
+- Train Predictions: 30-second cache (frequently updates)
+
+Cache keys follow a consistent pattern:
 ```
-GET /api/predictions/{stationCode}
-GET /api/stations/{stationCode}
-GET /api/stations/list
+station:{stationCode}:info
+station:{stationCode}:predictions
+```
+
+### Rate Limiting
+
+To respect WMATA's API limits, the application implements:
+- Per-second limit: 10 requests
+- Daily limit: 50,000 requests
+
+Using a Redis-based sliding window implementation.
+
+## API Endpoints
+
+The backend exposes three main endpoints:
+```
+GET /api/predictions/{stationCode}  # Get upcoming trains
+GET /api/stations/{stationCode}     # Get station details
+GET /api/stations/list             # Get all stations
 ```
 
 ### Error Handling
-- Rate Limit Exceeded: 429 Too Many Requests
-- WMATA API Error: 502 Bad Gateway
-- Cache Miss: Transparent retry
-- Invalid Station: 404 Not Found
+
+The API provides clear error responses for common scenarios:
+- Rate limit exceeded: 429 Too Many Requests
+- WMATA API issues: 502 Bad Gateway
+- Invalid station: 404 Not Found
+- Cache misses: Automatic retry
 
 ## Testing Strategy
 
-### 1. Unit Tests
+Our testing approach covers multiple layers of the application to ensure reliability and maintainability.
 
-#### Frontend Tests
-- **Component Tests**
-  - TrainArrival
-    - Station selection handling
-    - Prediction data management
-    - Child component coordination
-  - StationSelect
-    - Station data fetching
-    - Selection handling
-    - Error states
-  - PredictionGrid
-    - Prediction rendering
-    - Line color handling
-  - LoadingSpinner
-    - Render states
-    - Text configuration
+### Frontend Testing
 
-- **Service Layer**
-  - WMATA service integration
-  - Data transformation
-  - Error handling
-  - Cache interaction
+1. **Component Tests**
+   - Individual component behavior
+     * Station selection interactions
+     * Prediction display rendering
+     * Loading states
+     * Error handling
+   - Component integration
+     * Parent-child communication
+     * Event handling
+     * Data flow
 
-#### Backend Tests
-- Service Layer
-  - WMATA API integration
-  - Response parsing
-  - Error handling
-- Cache Layer
-  - Hit/miss behavior
-  - TTL expiration
-  - Key management
-- Rate Limiter
-  - Request throttling
-  - Window behavior
+2. **Service Layer Tests**
+   - API client functionality
+   - Data transformation
+   - Error handling scenarios
+   - Cache interaction
 
-### 2. Integration Tests
+### Backend Testing
 
-#### API Integration
-- Full prediction flow
-- Cache integration
-- Rate limit integration
-- Error propagation
-- Redis connection handling
+1. **Service Layer**
+   - WMATA API integration
+     * Request formatting
+     * Response parsing
+     * Error scenarios
+   - Rate limiting logic
+     * Request counting
+     * Window management
+     * Limit enforcement
+   - Cache management
+     * Storage/retrieval
+     * TTL handling
+     * Invalidation
 
-### 3. E2E Tests
-- Real-time prediction display
-- Station information retrieval
-- Error handling
+2. **API Endpoint Tests**
+   - Request validation
+   - Response formatting
+   - Error responses
+   - HTTP status codes
+
+### Integration Testing
+
+1. **Full Flow Testing**
+   - Station selection → prediction display
+   - Cache hit/miss scenarios
+   - Rate limit handling
+   - Error propagation
+
+2. **External Dependencies**
+   - WMATA API interaction
+   - Redis connection handling
+   - Error recovery
+
+### Performance Testing
+
+1. **Load Testing**
+   - Response times under load
+   - Cache effectiveness
+   - Rate limit accuracy
+   - System stability
+
+2. **Key Metrics**
+   - API response times
+   - Cache hit ratios
+   - Error rates
+   - Resource usage
+
+### Test Environments
+
+1. **Development**
+   - Local testing with mocks
+   - Rapid iteration
+   - Component isolation
+
+2. **Integration**
+   - Full system testing
+   - External service integration
+   - Performance validation
+
+This testing strategy ensures:
+- Reliable component behavior
+- Robust error handling
 - Performance under load
-
-### 4. Performance Testing
-
-#### Load Tests
-- Endpoint response times
-- Cache effectiveness
-- Rate limit behavior
 - System stability
+- Maintainable codebase
 
-#### Key Metrics
-- Response time under load
-- Cache hit ratio
-- Rate limit effectiveness
-- Redis performance
-- API error rates
+## Monitoring Considerations
 
-### 5. Test Data Management
-
-#### Mock Data
-```typescript
-export const mockPredictions = [{
-  LocationCode: 'A01',
-  Destination: 'Glenmont',
-  Line: 'RD',
-  Min: '3',
-  Car: '8'
-}]
-```
-
-#### Test Environments
-1. **Local Development**
-   - Mock WMATA API
-   - Local Redis instance
-   - Seeded test data
-
-2. **CI Environment**
-   - Containerized services
-   - Test-specific Redis instance
-   - API simulation
-
-3. **Staging**
-   - Real WMATA API (test key)
-   - Production-like Redis setup
-   - Sanitized data
-
-### 6. Testing Tools
-- **Backend**
-  - PHPUnit for unit/integration tests
-  - Mockery for service mocking
-  - PHP Redis mock for cache testing
-
-- **Frontend**
-  - Vitest for unit tests
-  - Vue Test Utils for component testing
-  - Cypress for E2E tests
-
-- **Infrastructure**
-  - k6 for load testing
-  - Docker Compose for test environments
-  - GitHub Actions for CI/CD
-
-Key areas requiring thorough testing:
-- Rate limiting logic
-- Cache invalidation
-- Error handling paths
-- API response parsing
-- Real-time updates 
+Key metrics to monitor:
+- API response times
+- Cache hit rates
+- Rate limit status
+- Error frequencies
+- Redis performance 
