@@ -1,53 +1,13 @@
 <template>
   <div class="train-arrival">
-    <div class="station-dropdown-container">
-      <label class="station-dropdown-label" for="station">Select a Station:</label>
-      <div class="station-dropdown" :class="{ 'loading': loading, 'error': error }">
-        <select 
-          id="station" 
-          v-model="selectedStation"
-          @change="fetchPredictions"
-        >
-          <option value="">Choose a station...</option>
-          <option 
-            v-for="station in stations" 
-            :key="station.Code" 
-            :value="station.Code"
-          >
-            {{ station.Name }}
-          </option>
-        </select>
-        <div v-if="error" class="error-message">
-          {{ error }}
-        </div>
-      </div>
-    </div>
+    <StationSelect v-model="selectedStation" />
 
-    <div v-if="loading" class="loading">
-      <div class="loading-spinner"></div>
-      Loading...
-    </div>
+    <LoadingSpinner v-if="loading" :show-text="true" />
 
-    <div v-else-if="predictions.length" class="predictions">
-      <h3>Upcoming Trains</h3>
-      <div class="prediction-grid">
-        <div class="prediction-header">
-          <span>Line</span>
-          <span>Destination</span>
-          <span>Minutes</span>
-        </div>
-        <div 
-          v-for="prediction in predictions" 
-          :key="prediction.DestinationCode + prediction.Min"
-          class="prediction-row"
-          :class="prediction.Line.toLowerCase()"
-        >
-          <span class="line-indicator">{{ prediction.Line }}</span>
-          <span>{{ prediction.DestinationName }}</span>
-          <span class="arrival-time">{{ prediction.Min }}</span>
-        </div>
-      </div>
-    </div>
+    <PredictionGrid 
+      v-else-if="predictions.length" 
+      :predictions="predictions" 
+    />
 
     <div v-else-if="selectedStation" class="no-trains">
       No trains currently predicted for this station.
@@ -56,26 +16,16 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, watch } from 'vue'
 import { wmataService } from '../services/wmataService'
-import type { Station, Prediction } from '../services/wmataService'
+import type { Prediction } from '../services/wmataService'
+import StationSelect from './station/StationSelect.vue'
+import PredictionGrid from './predictions/PredictionGrid.vue'
+import LoadingSpinner from './common/LoadingSpinner.vue'
 
-const stations = ref<Station[]>([])
 const predictions = ref<Prediction[]>([])
 const selectedStation = ref('')
 const loading = ref(false)
-const error = ref('')
-
-const fetchStations = async () => {
-  try {
-    loading.value = true
-    stations.value = await wmataService.getStations()
-  } catch (e) {
-    error.value = 'Failed to load stations. Please try again later.'
-  } finally {
-    loading.value = false
-  }
-}
 
 const fetchPredictions = async () => {
   if (!selectedStation.value) {
@@ -85,15 +35,33 @@ const fetchPredictions = async () => {
 
   try {
     loading.value = true
-    error.value = ''
     predictions.value = await wmataService.getPredictions(selectedStation.value)
   } catch (e) {
-    error.value = 'Failed to load predictions. Please try again later.'
     predictions.value = []
   } finally {
     loading.value = false
   }
 }
 
-onMounted(fetchStations)
+// Watch for station changes
+watch(selectedStation, fetchPredictions)
 </script>
+
+<style scoped>
+.train-arrival {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  padding: 2rem;
+  margin-top: 2rem;
+}
+
+.no-trains {
+  text-align: center;
+  padding: 2rem;
+  color: #666;
+  background-color: #f8f9fa;
+  border-radius: 4px;
+  border: 1px solid #eee;
+}
+</style>

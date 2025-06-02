@@ -8,9 +8,15 @@ export {}
 /* prettier-ignore */
 declare module 'vue' {
   export interface GlobalComponents {
+    BaseCard: typeof import('./components/base/BaseCard.vue')['default']
     HelloWorld: typeof import('./components/HelloWorld.vue')['default']
+    LoadingSpinner: typeof import('./components/common/LoadingSpinner.vue')['default']
+    PredictionCard: typeof import('./components/predictions/PredictionCard.vue')['default']
+    PredictionGrid: typeof import('./components/predictions/PredictionGrid.vue')['default']
+    PredictionList: typeof import('./components/predictions/PredictionList.vue')['default']
     RouterLink: typeof import('vue-router')['RouterLink']
     RouterView: typeof import('vue-router')['RouterView']
+    StationSelect: typeof import('./components/station/StationSelect.vue')['default']
     TrainArrival: typeof import('./components/TrainArrival.vue')['default']
   }
 }
