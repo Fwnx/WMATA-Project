@@ -6,14 +6,12 @@ A real-time train tracking application for the Washington Metropolitan Area Tran
 
 ## Prerequisites
 
-- Docker
+- Docker and Docker Compose
 - WMATA API Key ([Get one here](https://developer.wmata.com/))
-- curl (for health checks)
-- bash shell
 
 ## Setup Options
 
-### 1. Environment Setup (Required)
+### 1. Environment Setup
 First, create your environment configuration:
 
 1. Create a new file `backend/.env.local` with the following content:
@@ -89,44 +87,11 @@ docker compose up -d
    - Verify the development server is running
    - Frontend may take a few moments to become available
 
-4. **Service Health Checks**
-   ```bash
-   # Check Redis connection
-   docker compose exec redis redis-cli ping
-
-   # Check frontend availability
-   curl -s http://localhost:3000
-
-   # Check backend availability
-   curl -s http://localhost:8000
-   ```
-
 ## Development
-
 The project uses:
 - Symfony 7.2 for the backend
 - Vue 3 for the frontend
 - Redis for caching and rate limiting
 - Docker for containerization
 
-## Common Commands
-
-```bash
-# View logs
-docker compose logs
-
-# Restart services
-docker compose restart
-
-# Stop all services
-docker compose down
-
-# Clear Redis cache
-docker compose exec redis redis-cli FLUSHALL
-```
-
-## Architecture
-
-- **WmataService**: Handles WMATA API communication
-- **WmataCacheService**: Manages Redis-based caching
-- **WmataRateLimiterService**: Handles API rate limiting
+For detailed information about the service architecture, components, and testing strategy, see [SERVICE_OVERVIEW.md](SERVICE_OVERVIEW.md).
