@@ -13,6 +13,41 @@ This document outlines the planned architecture and implementation details for t
                    └──────────────┘
 ```
 
+## Frontend Component Structure
+
+### 1. Core Components
+- **TrainArrival**: Container component orchestrating the train arrival view
+  - Manages station selection state
+  - Handles prediction data fetching
+  - Coordinates child components
+
+- **StationSelect**: Station selection dropdown
+  - Fetches and displays station list
+  - Handles station selection
+  - Manages loading and error states
+  - Emits selection changes
+
+- **PredictionGrid**: Displays train predictions
+  - Renders prediction data in grid format
+  - Handles different train lines
+  - Shows arrival times and destinations
+
+- **LoadingSpinner**: Reusable loading indicator
+  - Configurable text display
+  - Animated spinner
+  - Used across components
+
+### 2. Component Data Flow
+```
+TrainArrival (Container)
+├─▶ StationSelect
+│   └─▶ Emits station changes
+├─▶ LoadingSpinner
+│   └─▶ Shows during data fetch
+└─▶ PredictionGrid
+    └─▶ Displays prediction results
+```
+
 ## Core Services
 
 ### 1. WMATA Integration Service
@@ -97,6 +132,29 @@ GET /api/stations/list
 
 ### 1. Unit Tests
 
+#### Frontend Tests
+- **Component Tests**
+  - TrainArrival
+    - Station selection handling
+    - Prediction data management
+    - Child component coordination
+  - StationSelect
+    - Station data fetching
+    - Selection handling
+    - Error states
+  - PredictionGrid
+    - Prediction rendering
+    - Line color handling
+  - LoadingSpinner
+    - Render states
+    - Text configuration
+
+- **Service Layer**
+  - WMATA service integration
+  - Data transformation
+  - Error handling
+  - Cache interaction
+
 #### Backend Tests
 - Service Layer
   - WMATA API integration
@@ -109,12 +167,6 @@ GET /api/stations/list
 - Rate Limiter
   - Request throttling
   - Window behavior
-
-#### Frontend Tests
-- Component rendering
-- Data fetching
-- Error state handling
-- Real-time updates
 
 ### 2. Integration Tests
 
