@@ -65,6 +65,30 @@ docker compose up -d
 - API rate limiting (10 requests/second, 50,000/day)
 - Redis-backed caching and rate limiting
 
+## Component Structure
+
+### Frontend Components
+- **TrainArrival**: Main container component
+  - Manages station selection and prediction display
+  - Handles loading states and errors
+- **StationSelect**: Station selection dropdown
+  - Fetches and displays station list
+  - Handles station selection events
+- **PredictionGrid**: Displays train predictions
+  - Shows arrival times and destinations
+  - Color-coded by train line
+
+### Backend Services
+- **WmataService**: Core WMATA API integration
+  - Handles API communication
+  - Response parsing and typing
+- **WmataCacheService**: Caching layer
+  - Redis-backed caching
+  - Different TTLs for different data types
+- **WmataRateLimiterService**: Rate limiting
+  - Sliding window implementation
+  - Configurable limits
+
 ## First-Time Usage Notes
 
 1. The first API request might be slower due to cache warming
@@ -93,5 +117,46 @@ The project uses:
 - Vue 3 for the frontend
 - Redis for caching and rate limiting
 - Docker for containerization
+
+### State Management
+While the application currently uses component-level state and props for data flow, it's designed to easily integrate with state management libraries like Pinia. The component architecture separates concerns in a way that would allow for straightforward migration to centralized state management.
+
+Here's how we could incorporate state management (like Pinia) into this design:
+
+1. **Current State Management**
+   - Station data is fetched in `StationSelect`
+   - Predictions are managed in `TrainArrival`
+   - Components communicate via props and events
+
+2. **Path to State Management Integration**
+   - Create two stores:
+     ```typescript
+     // stations store would handle:
+     - List of all stations
+     - Station loading state
+     - Station fetch errors
+     - Station filtering/sorting
+
+     // predictions store would handle:
+     - Current predictions
+     - Selected station
+     - Loading states
+     - Error handling
+     ```
+
+3. **Benefits of this Transition**
+   - Remove data fetching from components
+   - Centralize error handling
+   - Make state available anywhere in the app
+   - Easier to add features like:
+     - Favorite stations
+     - Recent searches
+     - Multiple station monitoring
+
+4. **Minimal Changes Required**
+   - Components keep their current structure
+   - Replace local state with store state
+   - Move API calls to store actions
+   - Keep components focused on UI
 
 For detailed information about the service architecture, components, and testing strategy, see [SERVICE_OVERVIEW.md](SERVICE_OVERVIEW.md).
